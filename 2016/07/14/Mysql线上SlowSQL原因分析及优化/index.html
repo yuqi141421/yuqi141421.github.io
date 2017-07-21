@@ -1,0 +1,826 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="线上问题,Mysql," />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.0" />
+
+
+
+
+
+
+<meta name="description" content="Payment提现申请定时任务执行速度慢分析根据线上反馈目前Payment提现申请定时任务（以下简称定时任务）运行时间较长。通过对定时任务所执行的SQL进行分析发现，定时任务执行速度慢是因为account_journal表和r_settlement_journal表的关联查询速度过慢造成。 两张表，每张表都有40W条数据，一张流水表(account_journal)；一张中间表（r_settlem">
+<meta name="keywords" content="线上问题,Mysql">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Mysql线上SlowSQL原因分析及优化">
+<meta property="og:url" content="https://yuqi141421.github.io/2016/07/14/Mysql线上SlowSQL原因分析及优化/index.html">
+<meta property="og:site_name" content="左右巴">
+<meta property="og:description" content="Payment提现申请定时任务执行速度慢分析根据线上反馈目前Payment提现申请定时任务（以下简称定时任务）运行时间较长。通过对定时任务所执行的SQL进行分析发现，定时任务执行速度慢是因为account_journal表和r_settlement_journal表的关联查询速度过慢造成。 两张表，每张表都有40W条数据，一张流水表(account_journal)；一张中间表（r_settlem">
+<meta property="og:updated_time" content="2017-07-21T13:42:41.382Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Mysql线上SlowSQL原因分析及优化">
+<meta name="twitter:description" content="Payment提现申请定时任务执行速度慢分析根据线上反馈目前Payment提现申请定时任务（以下简称定时任务）运行时间较长。通过对定时任务所执行的SQL进行分析发现，定时任务执行速度慢是因为account_journal表和r_settlement_journal表的关联查询速度过慢造成。 两张表，每张表都有40W条数据，一张流水表(account_journal)；一张中间表（r_settlem">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":0,"b2t":false,"scrollpercent":false},
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://yuqi141421.github.io/2016/07/14/Mysql线上SlowSQL原因分析及优化/"/>
+
+
+
+
+
+  <title> Mysql线上SlowSQL原因分析及优化 | 左右巴 </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">左右巴</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">左巴</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+    <link itemprop="mainEntityOfPage" href="https://yuqi141421.github.io/2016/07/14/Mysql线上SlowSQL原因分析及优化/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="yuqi">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="左右巴">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                Mysql线上SlowSQL原因分析及优化
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2016-07-14T10:39:14+08:00">
+                2016-07-14
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/数据库/" itemprop="url" rel="index">
+                    <span itemprop="name">数据库</span>
+                  </a>
+                </span>
+
+                
+                
+                  ， 
+                
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/数据库/Mysql/" itemprop="url" rel="index">
+                    <span itemprop="name">Mysql</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="Payment提现申请定时任务执行速度慢分析"><a href="#Payment提现申请定时任务执行速度慢分析" class="headerlink" title="Payment提现申请定时任务执行速度慢分析"></a>Payment提现申请定时任务执行速度慢分析</h3><p>根据线上反馈目前Payment提现申请定时任务（以下简称定时任务）运行时间较长。通过对定时任务所执行的SQL进行分析发现，定时任务执行速度慢是因为<code>account_journal</code>表和<code>r_settlement_journal</code>表的关联查询速度过慢造成。</p>
+<p>两张表，每张表都有40W条数据，一张流水表(<code>account_journal</code>)；一张中间表（<code>r_settlement_journal</code>），中间表记录着已经处理了的流水表数据。</p>
+<p>流水表结构：</p>
+<pre><code>CREATE TABLE `account_journal` (
+    `id` varchar(32) NOT NULL COMMENT &apos;主键&apos;,
+      `account_id` varchar(32) NOT NULL,
+      `in_or_out` int(11) NOT NULL DEFAULT &apos;0&apos; COMMENT &apos;出入账（0：入账 1：出账）&apos;,
+      `origin_amount` int(11) NOT NULL DEFAULT &apos;0&apos; COMMENT &apos;原金额（单位：分）&apos;,
+      `service_charge` int(11) DEFAULT NULL COMMENT &apos;服务费（单位：分）&apos;,
+      `actual_amount` int(11) NOT NULL DEFAULT &apos;0&apos; COMMENT &apos;实际金额（单位：分）&apos;,
+      `account_amount` int(11) NOT NULL COMMENT &apos;入账后，账户余额&apos;,
+      `create_time` datetime NOT NULL COMMENT &apos;创建时间&apos;,
+      `info` varchar(256) DEFAULT NULL COMMENT &apos;描述&apos;,
+      `opposite_type` int(2) NOT NULL COMMENT &apos;交易对方类型:0.咕咕订单 1 商家结算&apos;,
+      `opposite_account_number` varchar(64) NOT NULL COMMENT &apos;交易对方账号 当opposite_type=0时，为顾客手机号；当opposite_type=1时，为第三方支付账号&apos;,
+      `opposite_account_name` varchar(64) DEFAULT NULL COMMENT &apos;交易对方账号姓名&apos;,
+      `opposite_account_type_name` varchar(64) NOT NULL COMMENT &apos;交易对方账号类型：微信支付、支付宝、中国银行…&apos;,
+      `trade_id` varchar(32) NOT NULL COMMENT &apos;交易ID当opposite_type=0时，为订单ID；当opposite_type=1时，为结算ID&apos;,
+      `business_id` varchar(32) DEFAULT NULL COMMENT &apos;当opposite_type=0时，为支付id或者退款id;当当opposite_type=1时为空&apos;,
+      `create_time_ms` bigint(20) DEFAULT NULL COMMENT &apos;流水创建时间按毫秒存储&apos;,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=gbk;
+</code></pre><p>中间表结构：</p>
+<pre><code>CREATE TABLE `r_settlement_journal` (
+      `id` varchar(32) NOT NULL COMMENT &apos;主键&apos;,
+      `journal_id` varchar(32) NOT NULL COMMENT &apos;流水id&apos;,
+      `settlement_id` varchar(32) NOT NULL COMMENT &apos;审核id&apos;,
+      PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=gbk;
+</code></pre><p>每次定时任务执行时需要查询出没有处理的流水表数据。</p>
+<p>查询语句使用not exists进行关联查询</p>
+<pre><code>-- EXPLAIN
+SELECT
+SUM(a.actual_amount) amount    
+FROM
+    account_journal a
+WHERE
+    NOT EXISTS (
+    SELECT
+        b.journal_id
+    FROM
+        r_settlement_journal b
+    WHERE
+        b.journal_id = a.id
+)
+AND a.in_or_out = 0
+AND a.opposite_type = 0
+AND a.account_id = &apos;58077112a5a911e5b45900215edb4bc4&apos;
+AND a.create_time &lt; &apos;2016-07-26 23:59:59&apos;
+</code></pre><p>40W条数据查询用时为26s,如果切换成<code>left join</code>用时28s。</p>
+<p>查询语句分析结果：</p>
+<pre><code>*************************** 1. row ***************************
+       id: 1
+    select_type: PRIMARY
+    table: a
+     type: ALL
+    possible_keys: NULL
+      key: NULL
+  key_len: NULL
+      ref: NULL
+     rows: 421952
+    Extra: Using where
+*************************** 2. row ***************************
+       id: 2
+      select_type: DEPENDENT SUBQUERY
+    table: b
+     type: ALL
+    possible_keys: NULL
+      key: NULL
+  key_len: NULL
+      ref: NULL
+     rows: 386560
+    Extra: Using where
+</code></pre><p>两张表都使用了全表扫描。</p>
+<h3 id="优化步骤："><a href="#优化步骤：" class="headerlink" title="优化步骤："></a>优化步骤：</h3><h5 id="1-中间表关联id（journal-id）加索引"><a href="#1-中间表关联id（journal-id）加索引" class="headerlink" title="1. 中间表关联id（journal_id）加索引"></a>1. 中间表关联id（<code>journal_id</code>）加索引</h5><pre><code>ALTER TABLE `r_settlement_journal` 
+ADD INDEX `idx_journal_id` (`journal_id`) USING BTREE ;
+</code></pre><p>执行查询语句，查询时间由26s变为0.6s,查询效率提升明显。</p>
+<h4 id="2-流水表account-id字段添加索引"><a href="#2-流水表account-id字段添加索引" class="headerlink" title="2. 流水表account_id字段添加索引"></a>2. 流水表<code>account_id</code>字段添加索引</h4><pre><code>ALTER TABLE `account_journal`
+ADD INDEX `idx_account_id` (`account_id`) USING BTREE ;
+</code></pre><p>再次执行查询语句，查询时间由0.6s变为0.005s,查询效率再次提升。</p>
+<h4 id="3-添加索引对插入效率的影响分析"><a href="#3-添加索引对插入效率的影响分析" class="headerlink" title="3. 添加索引对插入效率的影响分析"></a>3. 添加索引对插入效率的影响分析</h4><h5 id="3-1-表中已有40W数据时，有索引和无索引插入时间对比"><a href="#3-1-表中已有40W数据时，有索引和无索引插入时间对比" class="headerlink" title="3.1 表中已有40W数据时，有索引和无索引插入时间对比"></a>3.1 表中已有40W数据时，有索引和无索引插入时间对比</h5><ol>
+<li><p><code>account_journal</code>表有<code>account_id</code>索引和无<code>account_id</code>索引插入时间对比</p>
+<p> |测试数据|无索引插入数据耗时    |有索引插入数据耗时    |<br> |——-|——————-|——————-|<br> |8线程同时插入1W条数据    ，共插入8W条数据| 77.19s| 78.413s|<br> |64个线程，每个线程插入10条数据，共插入640条数据|0.504s|0.536s|</p>
+</li>
+<li><p><code>r_settlement_journal</code>表有<code>journal_id</code>索引和无<code>journal_id</code>索引插入时间对比</p>
+<p> |测试数据|无索引插入数据耗时    |有索引插入数据耗时    |<br> |——-|——————-|——————-|<br> |8线程同时插入1W条数据    ，共插入8W条数据| 56.29s|57.3s|<br> |64个线程，每个线程插入10条数据，共插入640条数据|0.393s|0.458s|</p>
+</li>
+</ol>
+<h5 id="3-2-表中无数据时，有索引和无索引插入时间对比"><a href="#3-2-表中无数据时，有索引和无索引插入时间对比" class="headerlink" title="3.2 表中无数据时，有索引和无索引插入时间对比"></a>3.2 表中无数据时，有索引和无索引插入时间对比</h5><ol>
+<li><p><code>account_journal</code>表有<code>account_id</code>索引和无<code>account_id</code>索引插入时间对比</p>
+<p> |测试数据|无索引插入数据耗时    |有索引插入数据耗时    |<br> |——-|——————-|——————-|<br> |8线程同时插入1W条数据    ，共插入8W条数据| 54.601s| 55.599s|</p>
+</li>
+<li><p><code>r_settlement_journal</code>表有<code>journal_id</code>索引和无<code>journal_id</code>索引插入时间对比</p>
+<p> |测试数据|无索引插入数据耗时    |有索引插入数据耗时    |<br> |——-|——————-|——————-|<br> |8线程同时插入1W条数据    ，共插入8W条数据| 51.833s|52.505s|</p>
+</li>
+</ol>
+<p>总结：有无索引对数据插入效率影响不大，但是能显著的提升关联查询的效率。</p>
+<h5 id="优化结果"><a href="#优化结果" class="headerlink" title="优化结果"></a>优化结果</h5><p>提现申请定时任务执行一次所需时间由线3小时变为8分钟。<br>(测试数据：40W条数据，处理2016-07-25当天的流水数据)</p>
+<p>添加索引：</p>
+<pre><code>-- ALTER TABLE `r_settlement_journal` ADD INDEX `idx_journal_id` (`journal_id`) USING BTREE ;
+-- ALTER TABLE `account_journal` ADD INDEX `idx_account_id` (`account_id`) USING BTREE ;
+
+ALTER TABLE `r_settlement_journal` ADD INDEX `idx_journal_id` (`journal_id`) ;
+ALTER TABLE `account_journal` ADD INDEX `idx_account_id` (`account_id`) ;
+</code></pre><p>删除索引：</p>
+<pre><code>DROP INDEX idx_journal_id ON r_settlement_journal;
+DROP INDEX idx_account_id ON account_journal;
+</code></pre>
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/线上问题/" rel="tag"># 线上问题</a>
+          
+            <a href="/tags/Mysql/" rel="tag"># Mysql</a>
+          
+        </div>
+      
+
+      
+        
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/07/11/hibernate对象的三种状态使用不当引发的线上问题/" rel="prev" title="hibernate对象的三种状态使用不当引发的线上问题">
+                hibernate对象的三种状态使用不当引发的线上问题 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/avatar.gif"
+               alt="yuqi" />
+          <p class="site-author-name" itemprop="name">yuqi</p>
+           
+              <p class="site-description motion-element" itemprop="description">hello 右巴</p>
+          
+        </div>
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/archives">
+                <span class="site-state-item-count">4</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-categories">
+              
+                <span class="site-state-item-count">3</span>
+                <span class="site-state-item-name">分类</span>
+              
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              <a href="/tags/index.html">
+                <span class="site-state-item-count">3</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+        </div>
+
+        
+        
+
+        
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#Payment提现申请定时任务执行速度慢分析"><span class="nav-number">1.</span> <span class="nav-text">Payment提现申请定时任务执行速度慢分析</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#优化步骤："><span class="nav-number">2.</span> <span class="nav-text">优化步骤：</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#1-中间表关联id（journal-id）加索引"><span class="nav-number">2.0.1.</span> <span class="nav-text">1. 中间表关联id（journal_id）加索引</span></a></li></ol></li><li class="nav-item nav-level-4"><a class="nav-link" href="#2-流水表account-id字段添加索引"><span class="nav-number">2.1.</span> <span class="nav-text">2. 流水表account_id字段添加索引</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#3-添加索引对插入效率的影响分析"><span class="nav-number">2.2.</span> <span class="nav-text">3. 添加索引对插入效率的影响分析</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#3-1-表中已有40W数据时，有索引和无索引插入时间对比"><span class="nav-number">2.2.1.</span> <span class="nav-text">3.1 表中已有40W数据时，有索引和无索引插入时间对比</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#3-2-表中无数据时，有索引和无索引插入时间对比"><span class="nav-number">2.2.2.</span> <span class="nav-text">3.2 表中无数据时，有索引和无索引插入时间对比</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#优化结果"><span class="nav-number">2.2.3.</span> <span class="nav-text">优化结果</span></a></li></ol></li></ol></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2017</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yuqi</span>
+</div>
+
+
+<div class="powered-by">
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+        
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

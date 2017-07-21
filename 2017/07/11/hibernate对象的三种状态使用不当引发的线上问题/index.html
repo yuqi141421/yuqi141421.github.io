@@ -1,0 +1,765 @@
+<!doctype html>
+
+
+
+  
+
+
+<html class="theme-next pisces use-motion" lang="zh-Hans">
+<head>
+  <meta charset="UTF-8"/>
+<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1"/>
+
+
+
+<meta http-equiv="Cache-Control" content="no-transform" />
+<meta http-equiv="Cache-Control" content="no-siteapp" />
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+  <link href="/lib/fancybox/source/jquery.fancybox.css?v=2.1.5" rel="stylesheet" type="text/css" />
+
+
+
+
+  
+  
+  
+  
+
+  
+    
+    
+  
+
+  
+
+  
+
+  
+
+  
+
+  
+    
+    
+    <link href="//fonts.googleapis.com/css?family=Lato:300,300italic,400,400italic,700,700italic&subset=latin,latin-ext" rel="stylesheet" type="text/css">
+  
+
+
+
+
+
+
+<link href="/lib/font-awesome/css/font-awesome.min.css?v=4.6.2" rel="stylesheet" type="text/css" />
+
+<link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
+
+
+  <meta name="keywords" content="Hibernate,线上问题," />
+
+
+
+
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=5.1.0" />
+
+
+
+
+
+
+<meta name="description" content="问题详述广州银商咕咕测试商户使用咕咕商家APP订单收款功能生成收款二维码，顾客使用微信扫码支付，支付成功后订单状态仍是未支付。 解决过程微官网扫码支付时序图  根据订单号查询该订单在微官网的支付记录，发现支付记录状态为未支付。 根据支付记录id查询该笔支付对应payment的支付记录，在payment的支付状态已为已支付。 查看微官网和payment的Mysql binlog文件，发现微官网支付记">
+<meta name="keywords" content="Hibernate,线上问题">
+<meta property="og:type" content="article">
+<meta property="og:title" content="hibernate对象的三种状态使用不当引发的线上问题">
+<meta property="og:url" content="https://yuqi141421.github.io/2017/07/11/hibernate对象的三种状态使用不当引发的线上问题/index.html">
+<meta property="og:site_name" content="左右巴">
+<meta property="og:description" content="问题详述广州银商咕咕测试商户使用咕咕商家APP订单收款功能生成收款二维码，顾客使用微信扫码支付，支付成功后订单状态仍是未支付。 解决过程微官网扫码支付时序图  根据订单号查询该订单在微官网的支付记录，发现支付记录状态为未支付。 根据支付记录id查询该笔支付对应payment的支付记录，在payment的支付状态已为已支付。 查看微官网和payment的Mysql binlog文件，发现微官网支付记">
+<meta property="og:image" content="https://yuqi141421.github.io/images/pic.png">
+<meta property="og:updated_time" content="2017-07-21T13:59:27.301Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="hibernate对象的三种状态使用不当引发的线上问题">
+<meta name="twitter:description" content="问题详述广州银商咕咕测试商户使用咕咕商家APP订单收款功能生成收款二维码，顾客使用微信扫码支付，支付成功后订单状态仍是未支付。 解决过程微官网扫码支付时序图  根据订单号查询该订单在微官网的支付记录，发现支付记录状态为未支付。 根据支付记录id查询该笔支付对应payment的支付记录，在payment的支付状态已为已支付。 查看微官网和payment的Mysql binlog文件，发现微官网支付记">
+<meta name="twitter:image" content="https://yuqi141421.github.io/images/pic.png">
+
+
+
+<script type="text/javascript" id="hexo.configurations">
+  var NexT = window.NexT || {};
+  var CONFIG = {
+    root: '/',
+    scheme: 'Pisces',
+    sidebar: {"position":"left","display":"post","offset":12,"offset_float":0,"b2t":false,"scrollpercent":false},
+    fancybox: true,
+    motion: true,
+    duoshuo: {
+      userId: '0',
+      author: '博主'
+    },
+    algolia: {
+      applicationID: '',
+      apiKey: '',
+      indexName: '',
+      hits: {"per_page":10},
+      labels: {"input_placeholder":"Search for Posts","hits_empty":"We didn't find any results for the search: ${query}","hits_stats":"${hits} results found in ${time} ms"}
+    }
+  };
+</script>
+
+
+
+  <link rel="canonical" href="https://yuqi141421.github.io/2017/07/11/hibernate对象的三种状态使用不当引发的线上问题/"/>
+
+
+
+
+
+  <title> hibernate对象的三种状态使用不当引发的线上问题 | 左右巴 </title>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" lang="zh-Hans">
+
+  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+  
+  
+    
+  
+
+  <div class="container sidebar-position-left page-post-detail ">
+    <div class="headband"></div>
+
+    <header id="header" class="header" itemscope itemtype="http://schema.org/WPHeader">
+      <div class="header-inner"><div class="site-brand-wrapper">
+  <div class="site-meta ">
+    
+
+    <div class="custom-logo-site-title">
+      <a href="/"  class="brand" rel="start">
+        <span class="logo-line-before"><i></i></span>
+        <span class="site-title">左右巴</span>
+        <span class="logo-line-after"><i></i></span>
+      </a>
+    </div>
+      
+        <p class="site-subtitle">左巴</p>
+      
+  </div>
+
+  <div class="site-nav-toggle">
+    <button>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+      <span class="btn-bar"></span>
+    </button>
+  </div>
+</div>
+
+<nav class="site-nav">
+  
+
+  
+    <ul id="menu" class="menu">
+      
+        
+        <li class="menu-item menu-item-home">
+          <a href="/" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-home"></i> <br />
+            
+            首页
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-archives">
+          <a href="/archives" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-archive"></i> <br />
+            
+            归档
+          </a>
+        </li>
+      
+        
+        <li class="menu-item menu-item-tags">
+          <a href="/tags" rel="section">
+            
+              <i class="menu-item-icon fa fa-fw fa-tags"></i> <br />
+            
+            标签
+          </a>
+        </li>
+      
+
+      
+    </ul>
+  
+
+  
+</nav>
+
+
+
+ </div>
+    </header>
+
+    <main id="main" class="main">
+      <div class="main-inner">
+        <div class="content-wrap">
+          <div id="content" class="content">
+            
+
+  <div id="posts" class="posts-expand">
+    
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal " itemscope itemtype="http://schema.org/Article">
+    <link itemprop="mainEntityOfPage" href="https://yuqi141421.github.io/2017/07/11/hibernate对象的三种状态使用不当引发的线上问题/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="yuqi">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/avatar.gif">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="左右巴">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+            
+            
+              
+                hibernate对象的三种状态使用不当引发的线上问题
+              
+            
+          </h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2017-07-11T21:53:19+08:00">
+                2017-07-11
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/Hibernate/" itemprop="url" rel="index">
+                    <span itemprop="name">Hibernate</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        <h3 id="问题详述"><a href="#问题详述" class="headerlink" title="问题详述"></a>问题详述</h3><p>广州银商咕咕测试商户使用咕咕商家APP订单收款功能生成收款二维码，顾客使用微信扫码支付，支付成功后订单状态仍是未支付。</p>
+<h3 id="解决过程"><a href="#解决过程" class="headerlink" title="解决过程"></a>解决过程</h3><h5 id="微官网扫码支付时序图"><a href="#微官网扫码支付时序图" class="headerlink" title="微官网扫码支付时序图"></a>微官网扫码支付时序图</h5><p><img src="/images/pic.png" alt="图片"></p>
+<ol>
+<li>根据订单号查询该订单在微官网的支付记录，发现支付记录状态为<strong>未支付</strong>。</li>
+<li>根据支付记录id查询该笔支付对应payment的支付记录，在payment的支付状态已为<strong>已支付</strong>。</li>
+<li>查看微官网和payment的<code>Mysql binlog</code>文件，发现微官网支付记录只有一条<code>insert</code>语句，payment的支付记录执行了一条<code>insert</code>语句和一条<code>update</code>语句。<code>update</code>语句将支付状态改为了<strong>已支付</strong>。</li>
+<li>搜索日志文件，未找到payment将支付结果通知给微官网的记录日志。</li>
+</ol>
+<p><strong>由以上4点定位问题是由于payment未将支付结果通知到微官网造成。</strong></p>
+<p>搜索日志文件，发现银商发来的支付结果通知被当成了重复通知，payment未主动向银商查询支付结果。</p>
+<p><strong>可以确定payment的支付记录状态不是被支付结果通知和主动查询支付结果所更改</strong></p>
+<h5 id="payment-checkPageData接口分析"><a href="#payment-checkPageData接口分析" class="headerlink" title="payment checkPageData接口分析"></a>payment checkPageData接口分析</h5><p><code>checkPageData</code>接口会调用<code>UmsPayService</code>的<code>checkPageData方法</code>，该方法首先会对参数进行验签，验签通过后根据参数中的<strong>第三方交易单号</strong>查询支付记录（ 查询操作使用的是<code>hibernate</code>提供的<strong><code>org.hibernate.Query对象的list()</code></strong>方法 ）。</p>
+<p>当查询到支付记录时，会根据参数改变支付记录对象的属性值。</p>
+<p>由此可断定支付记录的状态是在<code>checkPageData</code>方法中被改变的。</p>
+<p>原因是<code>hibernate</code>查询出来的支付记录对象的状态为<strong>持久态</strong>，当改变了<strong>持久态对象</strong> 的属性值时，在<code>checkPageData</code>方法执行完成后，框架会执行<code>hibernate</code>的<code>session.close()</code>方法，此时会将<strong>持久态对象</strong>的属性值刷新到数据库中，即根据<strong>持久态对象</strong>的属性值更新了该条支付记录。</p>
+<h3 id="问题验证"><a href="#问题验证" class="headerlink" title="问题验证"></a>问题验证</h3><h4 id="本地问题重现"><a href="#本地问题重现" class="headerlink" title="本地问题重现"></a>本地问题重现</h4><p>运行本地payment,创造一条相同的支付记录，设置支付状态为<strong>未支付</strong>,使用<code>http</code>调用payment的<code>checkPageData</code>接口。</p>
+<pre><code>运结果：接口调用完成后支付记录的状态修改成了**已支付**，使用setter方法改变的属性值也更新到了该条记录中。
+</code></pre><h4 id="测试环境问题重现"><a href="#测试环境问题重现" class="headerlink" title="测试环境问题重现"></a>测试环境问题重现</h4><ol>
+<li><p>生成请求支付参数时把支付结果通知地址修改成错误的值，保证银商不会通知到payment。</p>
+<pre><code>结果：payment的支付记录状态被改变，微官网的支付记录状态没有改动，payment没有主动查询支付结果。
+</code></pre></li>
+<li><p>将payment的主动查询注释掉，保证payment不会主动查询支付结果。</p>
+<pre><code>结果：payment的支付记录状态被改变，微官网的支付记录状态没有改动，payment收到支付结果通知没有将结果通知到微官网。
+</code></pre></li>
+<li><p>同时执行1和2两个操作，保证银商不会通知到payment，payment不会主动查询支付结果。</p>
+<pre><code>结果：payment的支付记录状态被改变，微官网的支付记录状态没有改动。
+</code></pre></li>
+</ol>
+<h3 id="问题修复"><a href="#问题修复" class="headerlink" title="问题修复"></a>问题修复</h3><p>解决方法1：在checkPageData查出数据后，使用新对象来进行属性设值。</p>
+<p>解决方法2：在<code>IBaseDao</code>接口增加<code>evict</code>方法，使用<code>hibernateTemplate</code>的<code>evict</code>方法，将对象从<strong>持久态</strong>变更为<strong>游离态</strong>，脱离<code>hibernate</code>的管理。</p>
+<p>本次使用解决方法1修复。</p>
+<h3 id="修复后验证"><a href="#修复后验证" class="headerlink" title="修复后验证"></a>修复后验证</h3><h4 id="本地验证"><a href="#本地验证" class="headerlink" title="本地验证"></a>本地验证</h4><p>本地验证，调用完成后支付记录数据没有变更。</p>
+<h4 id="测试环境验证"><a href="#测试环境验证" class="headerlink" title="测试环境验证"></a>测试环境验证</h4><ol>
+<li><p>生成请求支付参数时把支付结果通知地址修改成错误的值，保证银商不会通知到payment。</p>
+<pre><code>结果：payment的支付记录被修改，同时微官网的支付记录状态也被修改，payment主动查询支付结果并通知给了微官网。
+</code></pre></li>
+<li><p>在1的基础上，将payment的主动查询注释掉，保证payment不会主动查询支付结果。</p>
+<pre><code>结果：payment的支付记录没有被更新，微官网的支付记录也没有被更新。
+</code></pre></li>
+<li><p>返回正确的通知地址，将payment的主动查询注释打开</p>
+<pre><code>结果：payment的支付记录被修改，同时微官网的支付记录状态也被修改，payment收到支付结果通知并将结果通知到了微官网。
+</code></pre></li>
+<li><p>在3的基础上，将payment的主动查询注释掉，保证payment不会主动查询支付结果。</p>
+<pre><code>结果：payment的支付记录被修改，同时微官网的支付记录状态也被修改，payment收到支付结果通知并将结果通知到了微官网。
+</code></pre></li>
+</ol>
+<h3 id="开发过程建议"><a href="#开发过程建议" class="headerlink" title="开发过程建议"></a>开发过程建议</h3><p>使用hibernate查询数据需注意对象的三种状态的转化。</p>
+<h3 id="参考资料"><a href="#参考资料" class="headerlink" title="参考资料"></a>参考资料</h3><ol>
+<li>hibernate对象的三种状态。</li>
+<li>spring doc : the HibernateTemplate。</li>
+</ol>
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <div>
+      
+        
+
+      
+    </div>
+
+    <footer class="post-footer">
+      
+        <div class="post-tags">
+          
+            <a href="/tags/Hibernate/" rel="tag"># Hibernate</a>
+          
+            <a href="/tags/线上问题/" rel="tag"># 线上问题</a>
+          
+        </div>
+      
+
+      
+        
+      
+
+      
+        <div class="post-nav">
+          <div class="post-nav-next post-nav-item">
+            
+              <a href="/2016/07/14/Mysql线上SlowSQL原因分析及优化/" rel="next" title="Mysql线上SlowSQL原因分析及优化">
+                <i class="fa fa-chevron-left"></i> Mysql线上SlowSQL原因分析及优化
+              </a>
+            
+          </div>
+
+          <span class="post-nav-divider"></span>
+
+          <div class="post-nav-prev post-nav-item">
+            
+              <a href="/2017/07/21/ThreadLocal原理分析以及注意事项/" rel="prev" title="ThreadLocal原理分析以及注意事项">
+                ThreadLocal原理分析以及注意事项 <i class="fa fa-chevron-right"></i>
+              </a>
+            
+          </div>
+        </div>
+      
+
+      
+      
+    </footer>
+  </article>
+
+
+
+    <div class="post-spread">
+      
+    </div>
+  </div>
+
+
+          </div>
+          
+
+
+          
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+        </div>
+        
+          
+  
+  <div class="sidebar-toggle">
+    <div class="sidebar-toggle-line-wrap">
+      <span class="sidebar-toggle-line sidebar-toggle-line-first"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-middle"></span>
+      <span class="sidebar-toggle-line sidebar-toggle-line-last"></span>
+    </div>
+  </div>
+
+  <aside id="sidebar" class="sidebar">
+    <div class="sidebar-inner">
+
+      
+
+      
+        <ul class="sidebar-nav motion-element">
+          <li class="sidebar-nav-toc sidebar-nav-active" data-target="post-toc-wrap" >
+            文章目录
+          </li>
+          <li class="sidebar-nav-overview" data-target="site-overview">
+            站点概览
+          </li>
+        </ul>
+      
+
+      <section class="site-overview sidebar-panel">
+        <div class="site-author motion-element" itemprop="author" itemscope itemtype="http://schema.org/Person">
+          <img class="site-author-image" itemprop="image"
+               src="/images/avatar.gif"
+               alt="yuqi" />
+          <p class="site-author-name" itemprop="name">yuqi</p>
+           
+              <p class="site-description motion-element" itemprop="description">hello 右巴</p>
+          
+        </div>
+        <nav class="site-state motion-element">
+
+          
+            <div class="site-state-item site-state-posts">
+              <a href="/archives">
+                <span class="site-state-item-count">4</span>
+                <span class="site-state-item-name">日志</span>
+              </a>
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-categories">
+              
+                <span class="site-state-item-count">3</span>
+                <span class="site-state-item-name">分类</span>
+              
+            </div>
+          
+
+          
+            
+            
+            <div class="site-state-item site-state-tags">
+              <a href="/tags/index.html">
+                <span class="site-state-item-count">3</span>
+                <span class="site-state-item-name">标签</span>
+              </a>
+            </div>
+          
+
+        </nav>
+
+        
+
+        <div class="links-of-author motion-element">
+          
+        </div>
+
+        
+        
+
+        
+        
+
+        
+
+
+      </section>
+
+      
+      <!--noindex-->
+        <section class="post-toc-wrap motion-element sidebar-panel sidebar-panel-active">
+          <div class="post-toc">
+
+            
+              
+            
+
+            
+              <div class="post-toc-content"><ol class="nav"><li class="nav-item nav-level-3"><a class="nav-link" href="#问题详述"><span class="nav-number">1.</span> <span class="nav-text">问题详述</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#解决过程"><span class="nav-number">2.</span> <span class="nav-text">解决过程</span></a><ol class="nav-child"><li class="nav-item nav-level-5"><a class="nav-link" href="#微官网扫码支付时序图"><span class="nav-number">2.0.1.</span> <span class="nav-text">微官网扫码支付时序图</span></a></li><li class="nav-item nav-level-5"><a class="nav-link" href="#payment-checkPageData接口分析"><span class="nav-number">2.0.2.</span> <span class="nav-text">payment checkPageData接口分析</span></a></li></ol></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题验证"><span class="nav-number">3.</span> <span class="nav-text">问题验证</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#本地问题重现"><span class="nav-number">3.1.</span> <span class="nav-text">本地问题重现</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#测试环境问题重现"><span class="nav-number">3.2.</span> <span class="nav-text">测试环境问题重现</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#问题修复"><span class="nav-number">4.</span> <span class="nav-text">问题修复</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#修复后验证"><span class="nav-number">5.</span> <span class="nav-text">修复后验证</span></a><ol class="nav-child"><li class="nav-item nav-level-4"><a class="nav-link" href="#本地验证"><span class="nav-number">5.1.</span> <span class="nav-text">本地验证</span></a></li><li class="nav-item nav-level-4"><a class="nav-link" href="#测试环境验证"><span class="nav-number">5.2.</span> <span class="nav-text">测试环境验证</span></a></li></ol></li><li class="nav-item nav-level-3"><a class="nav-link" href="#开发过程建议"><span class="nav-number">6.</span> <span class="nav-text">开发过程建议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#参考资料"><span class="nav-number">7.</span> <span class="nav-text">参考资料</span></a></li></ol></div>
+            
+
+          </div>
+        </section>
+      <!--/noindex-->
+      
+
+      
+
+    </div>
+  </aside>
+
+
+        
+      </div>
+    </main>
+
+    <footer id="footer" class="footer">
+      <div class="footer-inner">
+        <div class="copyright" >
+  
+  &copy; 
+  <span itemprop="copyrightYear">2017</span>
+  <span class="with-love">
+    <i class="fa fa-heart"></i>
+  </span>
+  <span class="author" itemprop="copyrightHolder">yuqi</span>
+</div>
+
+
+<div class="powered-by">
+  由 <a class="theme-link" href="https://hexo.io">Hexo</a> 强力驱动
+</div>
+
+<div class="theme-info">
+  主题 -
+  <a class="theme-link" href="https://github.com/iissnan/hexo-theme-next">
+    NexT.Pisces
+  </a>
+</div>
+
+
+        
+
+        
+      </div>
+    </footer>
+
+    
+      <div class="back-to-top">
+        <i class="fa fa-arrow-up"></i>
+        
+      </div>
+    
+
+  </div>
+
+  
+
+<script type="text/javascript">
+  if (Object.prototype.toString.call(window.Promise) !== '[object Function]') {
+    window.Promise = null;
+  }
+</script>
+
+
+
+
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+  <script type="text/javascript" src="/lib/jquery/index.js?v=2.1.3"></script>
+
+  
+  <script type="text/javascript" src="/lib/fastclick/lib/fastclick.min.js?v=1.0.6"></script>
+
+  
+  <script type="text/javascript" src="/lib/jquery_lazyload/jquery.lazyload.js?v=1.9.7"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/velocity/velocity.ui.min.js?v=1.2.1"></script>
+
+  
+  <script type="text/javascript" src="/lib/fancybox/source/jquery.fancybox.pack.js?v=2.1.5"></script>
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/utils.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/motion.js?v=5.1.0"></script>
+
+
+
+  
+  
+
+
+  <script type="text/javascript" src="/js/src/affix.js?v=5.1.0"></script>
+
+  <script type="text/javascript" src="/js/src/schemes/pisces.js?v=5.1.0"></script>
+
+
+
+  
+  <script type="text/javascript" src="/js/src/scrollspy.js?v=5.1.0"></script>
+<script type="text/javascript" src="/js/src/post-details.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  <script type="text/javascript" src="/js/src/bootstrap.js?v=5.1.0"></script>
+
+
+
+  
+
+
+  
+
+
+
+
+	
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+  
+
+  
+
+  
+
+  
+
+</body>
+</html>

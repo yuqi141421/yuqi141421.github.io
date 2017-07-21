@@ -71,7 +71,7 @@
 <link href="/css/main.css?v=5.1.0" rel="stylesheet" type="text/css" />
 
 
-  <meta name="keywords" content="线上问题,Mysql," />
+  <meta name="keywords" content="Mysql,线上问题," />
 
 
 
@@ -88,7 +88,7 @@
 
 
 <meta name="description" content="Payment提现申请定时任务执行速度慢分析根据线上反馈目前Payment提现申请定时任务（以下简称定时任务）运行时间较长。通过对定时任务所执行的SQL进行分析发现，定时任务执行速度慢是因为account_journal表和r_settlement_journal表的关联查询速度过慢造成。 两张表，每张表都有40W条数据，一张流水表(account_journal)；一张中间表（r_settlem">
-<meta name="keywords" content="线上问题,Mysql">
+<meta name="keywords" content="Mysql,线上问题">
 <meta property="og:type" content="article">
 <meta property="og:title" content="Mysql线上SlowSQL原因分析及优化">
 <meta property="og:url" content="https://yuqi141421.github.io/2016/07/14/Mysql线上SlowSQL原因分析及优化/index.html">
@@ -491,9 +491,9 @@ DROP INDEX idx_account_id ON account_journal;
       
         <div class="post-tags">
           
-            <a href="/tags/线上问题/" rel="tag"># 线上问题</a>
-          
             <a href="/tags/Mysql/" rel="tag"># Mysql</a>
+          
+            <a href="/tags/线上问题/" rel="tag"># 线上问题</a>
           
         </div>
       
